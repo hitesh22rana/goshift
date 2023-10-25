@@ -15,13 +15,16 @@ var (
 )
 
 func main() {
-	servers := servers.Init()
-	servers.Add("https://duckduckgo.com/", "https://www.github.com/")
+	// Add your servers to the loadbalancer and start the healthcheck
+	s := servers.Init()
+	s.Add("https://api1.example.com", "https://api2.example.com")
+	servers.StartHealthCheck(&s)
 
-	loadbalancer := loadbalancer.Init(servers)
+	lb := loadbalancer.Init(&s)
+	fmt.Printf("INFO: Loadbalancer listening on %s\n", url)
 
-	fmt.Printf("Loadbalancer listening on %s\n", url)
+	// Forward the request to the loadbalancer
+	http.HandleFunc("/", lb.ForwardRequest)
 
-	http.HandleFunc("/", loadbalancer.ForwardRequest)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }

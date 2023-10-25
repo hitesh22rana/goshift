@@ -2,42 +2,60 @@ package servers
 
 import (
 	"fmt"
+	"net/http/httputil"
 	"net/url"
-	"os"
 	"sync"
 )
 
 var Mu sync.Mutex
+var Wg sync.WaitGroup
 
-type Servers struct {
-	list  []url.URL
+type Server struct {
+	URL          string
+	ReverseProxy *httputil.ReverseProxy
+	Health       bool
+}
+
+type ServersConfig struct {
+	List  []*Server
 	index int8
 }
 
-func handleError(err error, messagePrefix string) {
-	if err != nil {
-		fmt.Printf("%s: %s", messagePrefix, err)
-		os.Exit(1)
-	}
+type Servers interface {
+	Add(servers ...string)
+	Current() *Server
 }
 
-func (s *Servers) Add(servers ...string) {
-	for _, server := range servers {
-		serverUrl, err := url.Parse(server)
-		handleError(err, "Error parsing server url")
-		s.list = append(s.list, *serverUrl)
-	}
-}
-
-func (s *Servers) GetCurrentServer() *url.URL {
+func (s *ServersConfig) shuffle() {
 	Mu.Lock()
 	defer Mu.Unlock()
 
-	serverUrl := s.list[s.index]
-	s.index = (s.index + 1) % int8(len(s.list))
-	return &serverUrl
+	s.index = (s.index + 1) % int8(len(s.List))
 }
 
-func Init() Servers {
-	return Servers{}
+func (s *ServersConfig) Add(servers ...string) {
+	for _, serverUrl := range servers {
+		serverURL, err := url.Parse(serverUrl)
+		if err != nil {
+			fmt.Println("ERROR: URL parsing failed for", serverUrl)
+		}
+
+		server := Server{
+			URL:          serverUrl,
+			ReverseProxy: httputil.NewSingleHostReverseProxy(serverURL),
+			Health:       false,
+		}
+
+		s.List = append(s.List, &server)
+	}
+}
+
+func (s *ServersConfig) Current() *Server {
+	server := s.List[s.index]
+	s.shuffle()
+	return server
+}
+
+func Init() ServersConfig {
+	return ServersConfig{}
 }

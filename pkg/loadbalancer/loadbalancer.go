@@ -1,24 +1,45 @@
 package loadbalancer
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
 
 	servers "github.com/hitesh22rana/goshift/pkg/servers"
 )
 
-type loadbalancer struct {
-	servers.Servers
+type LoadBalancerConfig struct {
+	*servers.ServersConfig
 }
 
-func (lb *loadbalancer) ForwardRequest(res http.ResponseWriter, req *http.Request) {
-	url := lb.Servers.GetCurrentServer()
-	fmt.Println("Forwarding request to", url)
-	rProxy := httputil.NewSingleHostReverseProxy(url)
-	rProxy.ServeHTTP(res, req)
+type LoadBalancer interface {
+	ForwardRequest(res http.ResponseWriter, req *http.Request)
 }
 
-func Init(servers servers.Servers) loadbalancer {
-	return loadbalancer{servers}
+func (lb *LoadBalancerConfig) getHealthyServer() (*servers.Server, error) {
+	for i := 0; i < len(lb.List); i++ {
+		server := lb.ServersConfig.Current()
+
+		if server.Health {
+			return server, nil
+		}
+	}
+
+	return nil, errors.New("no healthy servers found")
+}
+
+func (lb *LoadBalancerConfig) ForwardRequest(res http.ResponseWriter, req *http.Request) {
+	server, err := lb.getHealthyServer()
+
+	if err != nil {
+		res.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+
+	fmt.Println("INFO: Forwarding request to", server.URL)
+	server.ReverseProxy.ServeHTTP(res, req)
+}
+
+func Init(servers *servers.ServersConfig) LoadBalancerConfig {
+	return LoadBalancerConfig{servers}
 }
