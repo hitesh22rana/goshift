@@ -18,7 +18,7 @@ func main() {
 	// Add your servers to the loadbalancer and start the healthcheck
 	s := servers.Init()
 	s.Add("https://api1.example.com", "https://api2.example.com")
-	servers.StartHealthCheck(&s)
+	servers.StartHealthCheck(&s, 10)
 
 	lb := loadbalancer.Init(&s)
 	fmt.Printf("INFO: Loadbalancer listening on %s\n", url)

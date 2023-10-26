@@ -13,11 +13,13 @@ type LoadBalancerConfig struct {
 }
 
 type LoadBalancer interface {
+	getHealthyServer() (*servers.Server, error)
 	ForwardRequest(res http.ResponseWriter, req *http.Request)
+	Init(servers *servers.ServersConfig) LoadBalancerConfig
 }
 
 func (lb *LoadBalancerConfig) getHealthyServer() (*servers.Server, error) {
-	for i := 0; i < len(lb.List); i++ {
+	for i := 0; i < len(lb.Hosts); i++ {
 		server := lb.ServersConfig.Current()
 
 		if server.Health {
@@ -32,6 +34,7 @@ func (lb *LoadBalancerConfig) ForwardRequest(res http.ResponseWriter, req *http.
 	server, err := lb.getHealthyServer()
 
 	if err != nil {
+		fmt.Println("ERROR: No healthy servers found")
 		res.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}

@@ -3,6 +3,7 @@ package servers
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-co-op/gocron"
@@ -22,7 +23,7 @@ func (s *Server) healthCheck() {
 
 	defer res.Body.Close()
 
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		s.Health = false
 		return
 	}
@@ -31,15 +32,20 @@ func (s *Server) healthCheck() {
 }
 
 func (s *ServersConfig) healthCheck() {
-	for _, server := range s.List {
+	for _, server := range s.Hosts {
 		server.healthCheck()
 	}
 }
 
-func StartHealthCheck(s *ServersConfig) {
+func StartHealthCheck(s *ServersConfig, interval int) {
 	fmt.Println("INFO: Health check cron job started in the background")
 	scheduler := gocron.NewScheduler(time.UTC)
 
-	scheduler.Every(10).Second().Do(s.healthCheck)
+	_, err := scheduler.Every(interval).Second().Do(s.healthCheck)
+	if err != nil {
+		fmt.Println("ERROR: Health check cron job failed to start")
+		os.Exit(1)
+	}
+
 	scheduler.StartAsync()
 }

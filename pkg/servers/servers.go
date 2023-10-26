@@ -17,20 +17,22 @@ type Server struct {
 }
 
 type ServersConfig struct {
-	List  []*Server
+	Hosts []*Server
 	index int8
 }
 
 type Servers interface {
+	shuffle()
 	Add(servers ...string)
 	Current() *Server
+	Init() ServersConfig
 }
 
 func (s *ServersConfig) shuffle() {
 	Mu.Lock()
 	defer Mu.Unlock()
 
-	s.index = (s.index + 1) % int8(len(s.List))
+	s.index = (s.index + 1) % int8(len(s.Hosts))
 }
 
 func (s *ServersConfig) Add(servers ...string) {
@@ -46,12 +48,12 @@ func (s *ServersConfig) Add(servers ...string) {
 			Health:       false,
 		}
 
-		s.List = append(s.List, &server)
+		s.Hosts = append(s.Hosts, &server)
 	}
 }
 
 func (s *ServersConfig) Current() *Server {
-	server := s.List[s.index]
+	server := s.Hosts[s.index]
 	s.shuffle()
 	return server
 }
