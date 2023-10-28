@@ -12,12 +12,6 @@ type LoadBalancerConfig struct {
 	*servers.ServersConfig
 }
 
-type LoadBalancer interface {
-	getHealthyServer() (*servers.Server, error)
-	ForwardRequest(res http.ResponseWriter, req *http.Request)
-	Init(servers *servers.ServersConfig) LoadBalancerConfig
-}
-
 func (lb *LoadBalancerConfig) getHealthyServer() (*servers.Server, error) {
 	for i := 0; i < len(lb.Hosts); i++ {
 		server := lb.ServersConfig.Current()

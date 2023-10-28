@@ -21,13 +21,6 @@ type ServersConfig struct {
 	index int8
 }
 
-type Servers interface {
-	shuffle()
-	Add(servers ...string)
-	Current() *Server
-	Init() ServersConfig
-}
-
 func (s *ServersConfig) shuffle() {
 	Mu.Lock()
 	defer Mu.Unlock()
